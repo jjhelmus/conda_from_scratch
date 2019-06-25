@@ -63,7 +63,6 @@ RUN yum install -y \
     libffi-devel \
   && yum clean all
 
-
 WORKDIR /build_scripts
 COPY stuff.sh /build_scripts
 
@@ -73,6 +72,12 @@ RUN source /build_scripts/stuff.sh \
 RUN source /build_scripts/stuff.sh \
     && build_python
 
-#ENV PATH="/opt/conda/bin:${PATH}"
+RUN source /build_scripts/stuff.sh \
+    && install_conda_deps
+
+RUN source /build_scripts/stuff.sh \
+    && build_conda
+
+ENV PATH="/opt/cfs/bin:${PATH}"
 
 CMD [ "/bin/bash" ]

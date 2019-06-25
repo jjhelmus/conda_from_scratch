@@ -30,6 +30,21 @@ function build_python {
     ./configure --disable-shared --prefix ${PREFIX} --with-openssl=${PREFIX}
     make -j
     make install
+    ln -s ${PREFIX}/bin/python3 ${PREFIX}/bin/python
     popd
     rm -rf Python-${PYTHON_VERSION} Python-${PYTHON_VERSION}.tgz
+}
+
+function install_conda_deps {
+    ${PREFIX}/bin/pip3 install requests pycosat pyopenssl ruamel.yaml
+}
+
+function build_conda {
+    git clone https://github.com/conda/conda.git
+    pushd conda
+    git checkout 4.6.14
+    ${PREFIX}/bin/python3 setup.py install
+    popd
+    rm -rf conda
+    ${PREFIX}/bin/conda init bash
 }
