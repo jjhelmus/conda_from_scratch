@@ -27,7 +27,7 @@ RUN yum update -y && \
         which \
     && yum clean all
 
-# Build tools, these will be removed later
+# Build tools, gcc will be removed at the end
 RUN yum install -y \
     curl \
     gcc \
@@ -48,7 +48,7 @@ RUN mkdir -p ${CFS_PREFIX} && \
     rm -rf openssl-${OPENSSL_VERSION} openssl-${OPENSSL_VERSION}.tar.gz
 
 # Install Python from source
-# system library headers needed by Python
+# system library headers needed by Python, removed after Python install
 RUN yum install -y \
     bzip2-devel \
     libffi-devel \
@@ -69,6 +69,13 @@ RUN curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_
     popd && \
     rm -rf Python-${PYTHON_VERSION} Python-${PYTHON_VERSION}.tgz
 
+RUN yum remove -y \
+    bzip2-devel \
+    readline-devel \
+    sqlite-devel \
+    zlib-devel \
+  && yum clean all
+
 # Install python packages required by conda
 RUN ${CFS_PREFIX}/bin/python3 -m pip install requests pycosat pyopenssl ruamel.yaml
 
@@ -83,5 +90,10 @@ RUN curl -L -O https://github.com/conda/conda/archive/${CONDA_VERSION}.tar.gz &&
     ln -s ${CFS_PREFIX}/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     popd && \
     rm -rf conda-${CONDA_VERSION} conda-${CONDA_VERSION}.tar.gz
+
+# Remove un-needed build tools
+RUN yum remove -y \
+    gcc \
+  && yum clean all
 
 CMD [ "/bin/bash" ]
