@@ -1,83 +1,87 @@
 FROM centos:6
 
-# Set the locale
+LABEL maintainer="Jonathan J. Helmus <jjhelmus@gmail.com>"
+
+# Set an encoding to make things work smoothly.
 ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+
+# location where conda from scatch is installed
+ENV CFS_PREFIX /opt/cfs
 
 # Resolves a nasty NOKEY warning that appears when using yum.
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
 
-# base packages
-RUN yum install -y \
-    file \
-    libX11 \
-    libXau \
-    libxcb \
-    libXdmcp \
-    libXext \
-    libXrender \
-    libXt \
-    mesa-libGL \
-    mesa-libGLU \
-    openssh-clients \
-    patch \
-    rsync \
-    util-linux \
-    wget \
-    which \
-    bzip2 \
-    xorg-x11-server-Xvfb \
-  && yum clean all
+# Fix up issues with locales because the default images have these minimized
+# to the point of not being properly functional
+# See: https://github.com/CentOS/sig-cloud-instance-images/issues/71
+RUN yum update -y && \
+    yum reinstall -y glibc-common && \
+    yum clean all
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# ctng packages
-RUN yum install -y \
-    autoconf \
-    gperf  \
-    bison  \
-    flex  \
-    texinfo  \
-    help2man  \
-    gcc-c++  \
-    patch \
-	ncurses-devel  \
-    python-devel  \
-    perl-Thread-Queue  \
-    bzip2  \
-    git \
-  && yum clean all
+# Install basic requirements.
+RUN yum update -y && \
+    yum install -y \
+        bzip2 \
+        tar \
+        which \
+    && yum clean all
 
-#crosstool-ng packages
+# Build tools, these will be removed later
 RUN yum install -y \
-    automake \
-    libtool \
+    curl \
+    gcc \
     make \
-    unzip \
+    perl \
   && yum clean all
 
+# Install openssl from source as the system version is too old
+ENV OPENSSL_VERSION 1.1.1c
+RUN mkdir -p ${CFS_PREFIX} && \
+    curl -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
+    tar xf openssl-${OPENSSL_VERSION}.tar.gz && \
+    pushd openssl-${OPENSSL_VERSION} && \
+    ./config --prefix=${CFS_PREFIX} no-shared && \
+    make -j && \
+    make install_sw install_ssldirs && \
+    popd && \
+    rm -rf openssl-${OPENSSL_VERSION} openssl-${OPENSSL_VERSION}.tar.gz
+
+# Install Python from source
+# system library headers needed by Python
 RUN yum install -y \
     bzip2-devel \
-    sqlite-devel \
-    readline-devel \
-    tk-devel \
     libffi-devel \
+    readline-devel \
+    sqlite-devel \
+    zlib-devel \
   && yum clean all
 
-WORKDIR /build_scripts
-COPY stuff.sh /build_scripts
+ENV PYTHON_VERSION 3.7.3
+RUN curl -O https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz && \
+    tar xf Python-${PYTHON_VERSION}.tgz && \
+    pushd Python-${PYTHON_VERSION} && \
+    ./configure --disable-shared --prefix ${CFS_PREFIX} --with-openssl=${CFS_PREFIX} && \
+    make -j && \
+    make install && \
+    ln -s ${CFS_PREFIX}/bin/python3 ${CFS_PREFIX}/bin/python && \
+    ln -s ${CFS_PREFIX}/bin/pip3 ${CFS_PREFIX}/bin/pip && \
+    popd && \
+    rm -rf Python-${PYTHON_VERSION} Python-${PYTHON_VERSION}.tgz
 
-RUN source /build_scripts/stuff.sh \
-    && build_openssl
+# Install python packages required by conda
+RUN ${CFS_PREFIX}/bin/python3 -m pip install requests pycosat pyopenssl ruamel.yaml
 
-RUN source /build_scripts/stuff.sh \
-    && build_python
-
-RUN source /build_scripts/stuff.sh \
-    && install_conda_deps
-
-RUN source /build_scripts/stuff.sh \
-    && build_conda
-
-ENV PATH="/opt/cfs/bin:${PATH}"
+# Install conda from source
+ENV CONDA_VERSION 4.6.14
+RUN curl -L -O https://github.com/conda/conda/archive/${CONDA_VERSION}.tar.gz && \
+    tar xf ${CONDA_VERSION}.tar.gz && \
+    pushd conda-${CONDA_VERSION} && \
+    echo ${CONDA_VERSION} > conda/.version && \
+    ${CFS_PREFIX}/bin/python3 setup.py install --single-version-externally-managed --record record.txt && \
+    ${CFS_PREFIX}/bin/python3 -m conda init --install && \
+    ln -s ${CFS_PREFIX}/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    popd && \
+    rm -rf conda-${CONDA_VERSION} conda-${CONDA_VERSION}.tar.gz
 
 CMD [ "/bin/bash" ]
