@@ -110,6 +110,7 @@ RUN curl -L -O https://github.com/conda/conda/archive/${CONDA_VERSION}.tar.gz &&
     ${CFS_PREFIX}/bin/python3 setup.py install --single-version-externally-managed --record record.txt && \
     ${CFS_PREFIX}/bin/python3 -m conda init --install && \
     ln -s ${CFS_PREFIX}/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    mkdir -p ${CFS_PREFIX}/conda-meta && \
     popd && \
     rm -rf conda-${CONDA_VERSION} ${CONDA_VERSION}.tar.gz
 
