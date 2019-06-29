@@ -76,11 +76,33 @@ RUN yum remove -y \
     zlib-devel \
   && yum clean all
 
-# Install python packages required by conda
+# Build and install conda-package-handling and requirements including libarchive
+ENV LIBARCHIVE_VERSION 3.3.3
+ENV LIBARCHIVE=/opt/cfs/lib/libarchive.so
+RUN curl -O https://www.libarchive.org/downloads/libarchive-${LIBARCHIVE_VERSION}.tar.gz && \
+    tar xf libarchive-${LIBARCHIVE_VERSION}.tar.gz && \
+    pushd libarchive-${LIBARCHIVE_VERSION} && \
+    ./configure --prefix ${CFS_PREFIX} && \
+    make -j && \
+    make install && \
+    popd && \
+    rm -rf libarchive-${LIBARCHIVE_VERSION} libarchive-${LIBARCHIVE_VERSION}.tgz
+
+RUN ${CFS_PREFIX}/bin/python3 -m pip install six tqdm libarchive-c
+
+ENV CPH_VERSION 1.3.10
+RUN curl -L -O https://github.com/conda/conda-package-handling/releases/download/${CPH_VERSION}/conda-package-handling-${CPH_VERSION}.tar.gz && \
+    tar xf conda-package-handling-${CPH_VERSION}.tar.gz && \
+    pushd conda-package-handling-${CPH_VERSION} && \
+    ${CFS_PREFIX}/bin/python3 setup.py install --single-version-externally-managed --record record.txt && \
+    popd && \
+    rm -rf conda-package-handling-${CPH_VERSION} conda-package-handling-${CPH_VERSION}.tar.gz
+
+# Install additonal python packages required by conda
 RUN ${CFS_PREFIX}/bin/python3 -m pip install requests pycosat pyopenssl ruamel.yaml
 
 # Install conda from source
-ENV CONDA_VERSION 4.6.14
+ENV CONDA_VERSION 4.7.5
 RUN curl -L -O https://github.com/conda/conda/archive/${CONDA_VERSION}.tar.gz && \
     tar xf ${CONDA_VERSION}.tar.gz && \
     pushd conda-${CONDA_VERSION} && \
