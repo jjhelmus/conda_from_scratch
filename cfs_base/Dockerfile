@@ -86,7 +86,7 @@ RUN curl -O https://www.libarchive.org/downloads/libarchive-${LIBARCHIVE_VERSION
     make -j && \
     make install && \
     popd && \
-    rm -rf libarchive-${LIBARCHIVE_VERSION} libarchive-${LIBARCHIVE_VERSION}.tgz
+    rm -rf libarchive-${LIBARCHIVE_VERSION} libarchive-${LIBARCHIVE_VERSION}.tar.gz
 
 RUN ${CFS_PREFIX}/bin/python3 -m pip install six tqdm libarchive-c
 
@@ -111,7 +111,7 @@ RUN curl -L -O https://github.com/conda/conda/archive/${CONDA_VERSION}.tar.gz &&
     ${CFS_PREFIX}/bin/python3 -m conda init --install && \
     ln -s ${CFS_PREFIX}/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     popd && \
-    rm -rf conda-${CONDA_VERSION} conda-${CONDA_VERSION}.tar.gz
+    rm -rf conda-${CONDA_VERSION} ${CONDA_VERSION}.tar.gz
 
 # Remove un-needed build tools
 RUN yum remove -y \
